@@ -36,17 +36,22 @@ class ViewController: UIViewController {
     }
 
     @IBAction func numberButtonPressed(_ sender: Any) {
+        
         // add digit to input
         if !hasError {
-            
+
             inputChanged = true
             
-            let input = (sender as AnyObject).tag ?? -1 // digit pressed
+            // identify pressed button's tag
+            let input = (sender as AnyObject).tag ?? -1
             
             if input > 0 && input < 12 && outputText.count < 13 {
-                let input = String((sender as AnyObject).tag)
+                // button is a nonzero number
+                let input = String(input)
                 if input.count == 1 {
                     outputText += input
+                    
+                // button is decimal point
                 } else if input == "11" && notDecimalValue {
                     if outputText == "" {
                         outputText += "0."
@@ -54,14 +59,22 @@ class ViewController: UIViewController {
                         outputText += "."
                     }
                     notDecimalValue = false
+                    
+                // button is zero
                 } else if input == "10" && (Double(outputText) != 0 || !notDecimalValue) {
                     outputText += "0"
                 }
+                
                 output.text = outputText
+                
+                // handle edge case formatting behavior
                 if outputText == "." {
                     currentValue = 0.0
                 } else {
                     currentValue = Double(outputText)!
+                    if outputText == "0" {
+                        outputText = ""
+                    }
                 }
             }
         }
@@ -73,44 +86,15 @@ class ViewController: UIViewController {
         
         // clear
         if input == 1 {
-            output.text = "0"
-            outputText = ""
-            currentValue = 0.0
-            previousValue = 0.0
-            result = 0.0
-            curOp = .evaluate
-            hasError = false
-            notDecimalValue = true
-            inputChanged = false
-        }
-        
-        // negate
-        if !hasError {
+            clear()
+        } else if !hasError {
+            // negate
             if input == 2 {
-                if inputChanged {
-                    
-                    // remove negative
-                    if currentValue < 0 {
-                        output.text?.removeFirst()
-                        outputText.removeFirst()
-                        currentValue = currentValue * -1.0
-                        
-                    // add negative
-                    } else if currentValue > 0 {
-                        output.text = "-" + output.text!
-                        outputText = "-" + outputText
-                        currentValue = currentValue * -1.0
-                    }
-                }
+                negate()
                 
             // percentage
             } else if input == 3 {
-                if inputChanged {
-                    currentValue = currentValue * 0.01
-                    output.text = formatNum(num: currentValue)
-                    outputText = formatNum(num: currentValue)
-                    
-                }
+                convertToPercentage()
             }
         }
     }
@@ -128,54 +112,46 @@ class ViewController: UIViewController {
                 evalPresentResult(op: curOp)
             }
             
-            // division
-            if input == 1 {
+            switch input {
+            case 1:
                 curOp = .divide
                 previousValue = currentValue
                 inputChanged = false
-            
-            // multiplication
-            } else if input == 2 {
+            case 2:
                 curOp = .multiply
                 previousValue = currentValue
                 inputChanged = false
-                
-            // subtraction
-            } else if input == 3 {
+            case 3:
                 curOp = .subtract
                 previousValue = currentValue
                 inputChanged = false
-            
-            // addition
-            } else if input == 4 {
+            case 4:
                 curOp = .add
                 previousValue = currentValue
                 inputChanged = false
-                
-            // equal
-            } else if input == 5 {
+            case 5:
                 if curOp == .evaluate {
                     result = currentValue
                 }
                 evalPresentResult(op: curOp)
                 curOp = .evaluate
                 inputChanged = true
+            default:
+                print("Error -1 unknown sender tag in operator button stack")
             }
         }
     }
     
     func evalPresentResult(op : operation) {
         if inputChanged {
-            if op == .divide {
-                result = divide(a : previousValue, b : currentValue)
-            } else if op == .multiply {
-                result = previousValue * currentValue
-            } else if op == .subtract {
-                result = previousValue - currentValue
-            } else if op == .add {
-                result = previousValue + currentValue
+            switch op {
+            case .divide:   result = divide(a : previousValue, b : currentValue)
+            case .multiply: result = previousValue * currentValue
+            case .subtract: result = previousValue - currentValue
+            case .add:      result = previousValue + currentValue
+            case .evaluate: break
             }
-            
+
             previousValue = currentValue
             currentValue = result
 
@@ -184,7 +160,6 @@ class ViewController: UIViewController {
                 outputText = ""
             }
         }
-        
     }
     
     func formatNum(num : Double) -> String {
@@ -199,6 +174,45 @@ class ViewController: UIViewController {
         // output is appropriate as is
         } else {
             return String(num)
+        }
+    }
+    
+    func clear() {
+        output.text = "0"
+        outputText = ""
+        currentValue = 0.0
+        previousValue = 0.0
+        result = 0.0
+        curOp = .evaluate
+        hasError = false
+        notDecimalValue = true
+        inputChanged = false
+    }
+    
+    func negate() {
+        if inputChanged {
+            // remove negative
+            if currentValue < 0 {
+                output.text?.removeFirst()
+                if outputText.count > 0 {
+                    outputText.removeFirst()
+                }
+                currentValue = currentValue * -1.0
+                
+                // add negative
+            } else if currentValue > 0 {
+                output.text = "-" + output.text!
+                outputText = "-" + outputText
+                currentValue = currentValue * -1.0
+            }
+        }
+    }
+    
+    func convertToPercentage() {
+        if inputChanged && currentValue != 0 {
+            currentValue = currentValue * 0.01
+            output.text = formatNum(num: currentValue)
+            outputText = formatNum(num: currentValue)
         }
     }
     
